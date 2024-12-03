@@ -1,85 +1,56 @@
-# Job Tracker Application
+# Application Tracker
 
-Electron-based desktop application for job tracking and management.
+> A desktop application built with Vue.js and Electron for tracking and gamifying your job application process.
 
-## Development Setup
+## Overview
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm (comes with Node.js)
-- Git
+Application Tracker is a desktop tool designed to transform the job application process into a more engaging experience. It helps maintain motivation during job searching by providing immediate feedback, progress tracking, and gamification elements.
 
-### Installation
-1. Clone the repository:
-```bash
-git clone https://github.com/markbrutx/ApplicationTrackerVueElectron.git
-cd ApplicationTrackerVueElectron
-```
+## Features
 
-2. Install dependencies:
-```bash
-npm install
-```
+- **Application Tracking**
+  - Daily application counter
+  - Job board categorization
+  - Timestamp tracking with timezone support
+  - Recent applications history
+  - Cloud synchronization with Firebase
 
-3. Run in development mode:
-```bash
-npm run dev
-```
+- **Progress Gamification**
+  - Achievement streaks system (5 applications = 1 streak)
+  - Dual streak modes (basic/advanced)
+  - Audio feedback system
+  - Visual progress indicators
 
-## Building the Application
+- **Analytics & Insights**
+  - Daily activity charts
+  - Job board distribution analysis
+  - Detailed statistical summaries
+  - Data export capabilities
 
-### For Windows (EXE)
-To build the Windows executable:
-```bash
-npm run electron:build
-```
-The installer will be created in `dist_electron/applyelectron Setup 1.0.0.exe`
+## Tech Stack
 
-### For macOS (DMG)
-To build the macOS disk image:
-```bash
-npm run electron:build
-```
-The DMG file will be created in `dist_electron/applyelectron-1.0.0.dmg`
+- **Frontend Framework**: Vue.js 3
+- **State Management**: Vuex
+- **UI Framework**: Vuetify
+- **Desktop Framework**: Electron
+- **Charts**: Chart.js with Vue-ChartJS
+- **Database**: Firebase Realtime Database
+- **Build Tools**: Vue CLI + Electron Builder
 
-Note: Building for macOS requires running on a macOS system.
+## Why This Project Exists
 
-## Build Configuration
+Job searching can feel like throwing applications into a void - you send them out day after day, often without any immediate response. This can be mentally draining and demotivating. I created this application to make this process more bearable and even engaging.
 
-The build configuration is defined in `package.json` under the `build` section:
-- Windows: Creates an NSIS installer (.exe)
-- macOS: Creates both DMG and ZIP formats
+The idea was simple: what if each application submission could give you immediate positive feedback? What if you could see your progress and feel a sense of achievement, even before getting responses from employers?
 
-## Troubleshooting Build Issues
+That's how Application Tracker was born. It turns each application into a small victory with satisfying sound effects. It keeps track of your "streaks" like a game, making you want to maintain your momentum. The visual charts and statistics help you see your progress over time, proving that you're moving forward even when it doesn't feel like it.
 
-### Common Issues:
+Plus, with Firebase integration, your progress syncs across devices, so you never lose track of your efforts. It's not just a tracker - it's a companion for your job search journey, helping you stay motivated and organized when you need it most.
 
-1. **Native Dependencies**
-If you encounter issues with native dependencies, run:
-```bash
-npm run rebuild
-```
+## Getting Started
 
-2. **Missing Dependencies**
-If you get errors about missing dependencies:
-```bash
-npm install
-npm run postinstall
-```
-
-3. **Clean Build**
-To perform a clean build:
-```bash
-rm -rf dist dist_electron
-npm run electron:build
-```
-
-## Optional Improvements
-
-To enhance the build quality:
-1. Add application icon in `build` configuration
-2. Add description and author in package.json
-3. Optimize large JavaScript chunks using dynamic imports
+1. See [BUILD.md](src/docs/BUILD.md) for build and development instructions
+2. Follow [FIREBASE_SETUP.md](src/docs/FIREBASE_SETUP.md) to configure Firebase integration
 
 ## License
 MIT
