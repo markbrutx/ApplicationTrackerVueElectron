@@ -243,15 +243,42 @@ const summaryData = computed(() => {
 const loadData = async () => {
   loading.value = true
   try {
-    const { ipcRenderer } = require('electron')
-    const data = await ipcRenderer.invoke('load-data')
-    responses.value = data.responses || []
-    calculateStreak()
-    updateTodayCount()
+    if (!window.electronAPI) {
+      console.error('Electron API not available')
+      return
+    }
+    const data = await window.electronAPI.loadData()
+    if (data) {
+      responses.value = data.responses || []
+      calculateStreak()
+      updateTodayCount()
+    }
   } catch (error) {
     console.error('Error loading data:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// Handle both IPC and direct store updates
+const handleUpdate = async () => {
+  await loadData()
+}
+
+// Listen for IPC updates
+const setupIpcListener = () => {
+  if (typeof window === 'undefined' || !window.electronAPI) {
+    console.error('Electron API not available')
+    return
+  }
+  
+  try {
+    const cleanup = window.electronAPI.onUpdateCounter(handleUpdate)
+    if (typeof cleanup === 'function') {
+      onUnmounted(cleanup)
+    }
+  } catch (error) {
+    console.error('Error setting up IPC listener:', error)
   }
 }
 
@@ -261,10 +288,14 @@ const calculateStreak = () => {
   currentDate.setHours(0, 0, 0, 0)
 
   while (true) {
-    const dateStr = currentDate.toDateString()
-    const hasResponses = responses.value.some(r => 
-      new Date(r.timestamp).toDateString() === dateStr
-    )
+    const dayStart = new Date(currentDate)
+    const dayEnd = new Date(currentDate)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    const hasResponses = responses.value.some(r => {
+      const responseDate = new Date(r.timestamp)
+      return responseDate >= dayStart && responseDate <= dayEnd
+    })
 
     if (!hasResponses) break
     streak++
@@ -275,28 +306,30 @@ const calculateStreak = () => {
 }
 
 const updateTodayCount = () => {
-  const today = new Date().toDateString()
-  todayCount.value = responses.value.filter(r => 
-    new Date(r.timestamp).toDateString() === today
-  ).length
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  todayCount.value = responses.value.filter(r => {
+    const responseDate = new Date(r.timestamp)
+    return responseDate >= todayStart && responseDate <= todayEnd
+  }).length
 }
 
-// Handle both IPC and direct store updates
-const handleUpdate = async () => {
-  await loadData()
-}
-
-// Listen for IPC updates
-const setupIpcListener = () => {
-  const { ipcRenderer } = require('electron')
-  ipcRenderer.on('update-counter', handleUpdate)
-}
-
-// Remove IPC listener
-const cleanupIpcListener = () => {
-  const { ipcRenderer } = require('electron')
-  ipcRenderer.removeListener('update-counter', handleUpdate)
-}
+onMounted(async () => {
+  try {
+    await loadData()
+    setupIpcListener()
+    // Initial sync with store
+    if (store.state.responses && store.state.responses.length > 0) {
+      responses.value = store.state.responses
+      calculateStreak()
+      updateTodayCount()
+    }
+  } catch (error) {
+    console.error('Error in mounted hook:', error)
+  }
+})
 
 // Watch for store changes
 watch(() => store.state.responses, async (newResponses) => {
@@ -306,21 +339,6 @@ watch(() => store.state.responses, async (newResponses) => {
     updateTodayCount()
   }
 }, { deep: true })
-
-onMounted(async () => {
-  await loadData()
-  setupIpcListener()
-  // Initial sync with store
-  if (store.state.responses.length > 0) {
-    responses.value = store.state.responses
-    calculateStreak()
-    updateTodayCount()
-  }
-})
-
-onUnmounted(() => {
-  cleanupIpcListener()
-})
 </script>
 
 <style scoped>

@@ -15,9 +15,12 @@ module.exports = defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['electron'],
+  },
   server: {
     port: 5173,
-    strictPort: false, // Allow Vite to find another port if 5173 is in use
+    strictPort: false,
     host: true
   }
 })

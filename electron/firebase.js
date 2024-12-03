@@ -1,14 +1,45 @@
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, push, get, remove} = require('firebase/database');
 
+// Check if environment variables are properly set
+if (!process.env.VITE_FIREBASE_API_KEY || 
+    !process.env.VITE_FIREBASE_AUTH_DOMAIN || 
+    !process.env.VITE_FIREBASE_DATABASE_URL || 
+    !process.env.VITE_FIREBASE_PROJECT_ID || 
+    !process.env.VITE_FIREBASE_STORAGE_BUCKET || 
+    !process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 
+    !process.env.VITE_FIREBASE_APP_ID) {
+    console.error('\x1b[31m%s\x1b[0m', `
+╔════════════════════════ ERROR ════════════════════════╗
+║                                                       ║
+║   Missing Firebase Environment Variables!             ║
+║                                                       ║
+║   Please create a .env file in the root directory    ║
+║   with the following variables:                       ║
+║                                                       ║
+║   VITE_FIREBASE_API_KEY                              ║
+║   VITE_FIREBASE_AUTH_DOMAIN                          ║
+║   VITE_FIREBASE_DATABASE_URL                         ║
+║   VITE_FIREBASE_PROJECT_ID                           ║
+║   VITE_FIREBASE_STORAGE_BUCKET                       ║
+║   VITE_FIREBASE_MESSAGING_SENDER_ID                  ║
+║   VITE_FIREBASE_APP_ID                               ║
+║                                                       ║
+║   You can copy these from .env.example               ║
+║                                                       ║
+╚═══════════════════════════════════════════════════════╝
+`);
+    process.exit(1);
+}
+
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
+    apiKey: process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: process.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID
 };
 
 class FirebaseManager {
@@ -42,12 +73,17 @@ class FirebaseManager {
         }
     }
 
-    async addResponse(jobBoard, timestamp) {
+    // Get current time in ISO format
+    getCurrentTime() {
+        return new Date().toISOString();
+    }
+
+    async addResponse(jobBoard) {
         try {
             const responsesRef = ref(this.db, 'responses');
             await push(responsesRef, {
                 jobBoard,
-                timestamp: timestamp || new Date().toISOString() 
+                timestamp: new Date().toString()
             });
             return true;
         } catch (error) {
@@ -71,6 +107,7 @@ class FirebaseManager {
                 });
             }
             
+            // Sort responses by timestamp in descending order (newest first)
             return responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         } catch (error) {
             console.error('Error getting responses:', error);
@@ -145,6 +182,23 @@ class FirebaseManager {
         } catch (error) {
             console.error('Error clearing today data:', error);
             return false;
+        }
+    }
+
+    async loadData() {
+        try {
+            const responses = await this.getAllResponses();
+            const jobBoards = await this.getAllJobBoards();
+            return {
+                responses,
+                jobBoards
+            };
+        } catch (error) {
+            console.error('Error loading data:', error);
+            return {
+                responses: [],
+                jobBoards: []
+            };
         }
     }
 }

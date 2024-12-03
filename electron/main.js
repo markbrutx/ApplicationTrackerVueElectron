@@ -1,12 +1,38 @@
 const electron = require('electron')
 const { app, BrowserWindow, ipcMain, globalShortcut, Menu, shell } = electron
 const path = require('path')
+const fs = require('fs')
+const { spawn } = require('child_process');
+
+// Load environment variables
+try {
+  const envConfig = fs.readFileSync(path.join(__dirname, '../.env'), 'utf8')
+  envConfig.split('\n').forEach(line => {
+    const [key, value] = line.split('=')
+    if (key && value) {
+      process.env[key.trim()] = value.trim()
+    }
+  })
+} catch (err) {
+  console.error('\x1b[31m%s\x1b[0m', `
+╔════════════════════════ ERROR ════════════════════════╗
+║                                                       ║
+║   Missing .env file!                                 ║
+║                                                       ║
+║   Please create a .env file in the root directory    ║
+║   You can copy the variables from .env.example       ║
+║                                                       ║
+╚═══════════════════════════════════════════════════════╝
+`)
+  process.exit(1)
+}
+
 const FirebaseManager = require('./firebase')
 const http = require('http')
-const fs = require('fs')
 
 let mainWindow
 let db
+let httpServer
 
 async function createWindow() {
   db = new FirebaseManager()
@@ -51,6 +77,19 @@ async function createWindow() {
       mainWindow.webContents.send('update-counter')
     }
   })
+
+  globalShortcut.register('CommandOrControl+Right', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('update-counter')
+    }
+  })
+}
+
+function startTemplateServer() {
+  const serverPath = path.join(__dirname, '../public/templategen');
+  httpServer = spawn('npx', ['http-server', serverPath, '-p', '8080', '--cors'], {
+    stdio: 'inherit'
+  });
 }
 
 ipcMain.on('update-counter', (event) => {
@@ -59,30 +98,43 @@ ipcMain.on('update-counter', (event) => {
   }
 })
 
-app.whenReady().then(createWindow).catch(console.error)
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow().catch(console.error)
-  }
-})
+app.whenReady().then(() => {
+  startTemplateServer();
+  createWindow();
+  
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
-  globalShortcut.unregisterAll()
   if (process.platform !== 'darwin') {
-    app.quit()
+    if (httpServer) {
+      httpServer.kill();
+    }
+    app.quit();
   }
 })
 
 ipcMain.handle('save-data', async (event, data) => {
   const { jobBoard, timestamp } = data
-  return await db.addResponse(jobBoard, timestamp)
+  const success = await db.addResponse(jobBoard, timestamp)
+  if (success) {
+    mainWindow.webContents.send('update-counter')
+    return true
+  }
+  return false
 })
 
 ipcMain.handle('load-data', async () => {
-  return {
-    responses: await db.getAllResponses(),
-    jobBoards: await db.getAllJobBoards()
+  try {
+    const data = await db.loadData()
+    return data
+  } catch (error) {
+    console.error('Error loading data:', error)
+    return null
   }
 })
 
@@ -95,8 +147,14 @@ ipcMain.handle('clear-today-data', async () => {
 })
 
 ipcMain.handle('delete-response', async (event, id) => {
-  await db.removeResponse(id)
-  return await db.getAllResponses()
+  try {
+    await db.removeResponse(id)
+    const data = await db.loadData()
+    return data
+  } catch (error) {
+    console.error('Error deleting response:', error)
+    throw error
+  }
 })
 
 ipcMain.handle('clear-store', async () => {
@@ -109,22 +167,21 @@ ipcMain.handle('clear-store', async () => {
   }
 })
 
-ipcMain.handle('open-cover-letter-template', async () => {
-  const port = 3500
-  const server = http.createServer((req, res) => {
-    const templatePath = path.join(__dirname, '../public/templategen/index.html')
-    fs.readFile(templatePath, (err, data) => {
-      if (err) {
-        res.writeHead(500)
-        res.end('Error loading cover letter template')
-        return
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html' })
-      res.end(data)
-    })
-  })
+ipcMain.handle('update-counter', async () => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-counter')
+    return true
+  }
+  return false
+})
 
-  server.listen(port, () => {
-    shell.openExternal(`http://localhost:${port}`)
-  })
+ipcMain.handle('open-cover-letter-template', async () => {
+  try {
+    // Открываем шаблонизатор в браузере по умолчанию
+    shell.openExternal('http://localhost:8080')
+    return true
+  } catch (error) {
+    console.error('Error opening cover letter template:', error)
+    return false
+  }
 })

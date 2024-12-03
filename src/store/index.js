@@ -35,15 +35,15 @@ const state = {
   ],
   todayCount: 0,
   currentStreak: 0,
-  totalStreaks: 0, // Track how many full streaks completed
-  isBasicStreak: true // Alternate between basic and advanced streaks
+  totalStreaks: 0,
+  isBasicStreak: true
 }
 
 const getStreakSound = (streak, isBasicStreak) => {
   if (isBasicStreak) {
     return basicSound
   }
-  // In advanced streak, use numbered sounds
+  // В продвинутом стрике используем нумерованные звуки
   return advancedSounds[streak - 1]
 }
 
@@ -108,19 +108,27 @@ export default createStore({
     },
 
     updateCounts({ commit, state }) {
-      const today = new Date().toDateString()
-      const todayResponses = state.responses.filter(r => 
-        new Date(r.timestamp).toDateString() === today
-      )
+      const today = new Date()
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+      
+      const todayResponses = state.responses.filter(r => {
+        const responseDate = new Date(r.timestamp)
+        return responseDate >= todayStart && responseDate <= todayEnd
+      })
+      
       commit('setTodayCount', todayResponses.length)
     },
 
     async loadData({ commit }) {
       const data = await window.electronAPI.loadData()
+      // Сначала сбрасываем все
+      commit('resetStreak')
       commit('setResponses', data.responses)
       if (data.jobBoards && data.jobBoards.length > 0) {
         commit('setJobBoards', data.jobBoards)
       }
+      // Обновляем только todayCount, без обновления стрика
       await this.dispatch('updateCounts')
     },
 
@@ -133,6 +141,22 @@ export default createStore({
   mutations: {
     setStreak(state, streak) {
       state.currentStreak = streak
+    },
+    incrementTodayCount(state) {
+      state.todayCount++
+    },
+    updateCurrentStreak(state) {
+      // Увеличиваем текущий стрик
+      if (state.currentStreak === 0) {
+        state.currentStreak = 1
+      } else if (state.currentStreak === 5) {
+        // Если достигли 5, начинаем новый цикл
+        state.currentStreak = 1
+        // Переключаем между базовым и продвинутым режимом
+        state.isBasicStreak = !state.isBasicStreak
+      } else {
+        state.currentStreak++
+      }
     },
     incrementTotalStreaks(state) {
       state.totalStreaks++
@@ -157,6 +181,10 @@ export default createStore({
       state.currentStreak = 0
       state.totalStreaks = 0
       state.isBasicStreak = true // Reset to basic streak
+    },
+    resetStreak(state) {
+      state.currentStreak = 0
+      state.isBasicStreak = true
     }
   }
 })

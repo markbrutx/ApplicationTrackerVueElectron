@@ -34,6 +34,7 @@
     "electron": "^28.2.1",
     "electron-builder": "^24.9.1",
     "electron-rebuild": "^3.2.9",
+    "http-server": "^14.1.1",
     "vite": "^5.0.12"
   },
   "build": {
@@ -45,14 +46,6 @@
       "dist/**/*",
       "electron/**/*",
       "public/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "public/jobs.ico"
-    },
-    "mac": {
-      "target": ["dmg", "zip"],
-      "category": "public.app-category.productivity"
-    }
+    ]
   }
 }

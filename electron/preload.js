@@ -1,11 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  updateCounter: () => ipcRenderer.send('update-counter'),
-  onUpdateCounter: (callback) => ipcRenderer.on('update-counter', callback),
-  saveData: (data) => ipcRenderer.invoke('save-data', data),
   loadData: () => ipcRenderer.invoke('load-data'),
-  clearTodayData: () => ipcRenderer.invoke('clear-today-data'),
+  onUpdateCounter: (callback) => {
+    ipcRenderer.on('update-counter', callback)
+    return () => ipcRenderer.removeListener('update-counter', callback)
+  },
+  openCoverLetterTemplate: () => ipcRenderer.invoke('open-cover-letter-template'),
+  updateCounter: () => ipcRenderer.invoke('update-counter'),
+  saveData: (data) => ipcRenderer.invoke('save-data', data),
   deleteResponse: (id) => ipcRenderer.invoke('delete-response', id),
-  openCoverLetterTemplate: () => ipcRenderer.invoke('open-cover-letter-template')
+  clearTodayData: () => ipcRenderer.invoke('clear-today-data'),
+  clearStore: () => ipcRenderer.invoke('clear-store')
 })

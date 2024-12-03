@@ -12,8 +12,8 @@ Electron-based desktop application for job tracking and management.
 ### Installation
 1. Clone the repository:
 ```bash
-git clone https://github.com/markbrutx/applyElectron.git
-cd applyElectron
+git clone https://github.com/markbrutx/ApplicationTrackerVueElectron.git
+cd ApplicationTrackerVueElectron
 ```
 
 2. Install dependencies:

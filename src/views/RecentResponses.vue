@@ -12,49 +12,81 @@
         {{ responses.length }} entries
       </v-chip>
     </v-card-title>
-    <v-data-table
-      :headers="headers"
-      :items="responses"
-      :loading="loading"
-      class="elevation-0"
-      hover
-    >
-      <template v-slot:item.timestamp="{ item }">
-        <span class="text-grey-darken-2">{{ formatDate(item.timestamp) }}</span>
-      </template>
-      <template v-slot:loader>
-        <v-progress-linear indeterminate color="primary"></v-progress-linear>
-      </template>
-      <template v-slot:no-data>
-        <div class="pa-4 text-center text-grey-darken-1">
-          No responses available
-        </div>
-      </template>
-    </v-data-table>
+    <div style="max-height: 600px; overflow-y: auto;">
+      <v-data-table
+        :headers="headers"
+        :items="responses"
+        :loading="loading"
+        class="elevation-0"
+        hover
+      >
+        <template v-slot:item.jobBoard="{ item }">
+          <div class="d-flex align-center">
+            <v-icon icon="mdi-check-circle" color="success" class="mr-2"></v-icon>
+            {{ item.jobBoard }}
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              size="small"
+              color="error"
+              class="ml-auto"
+              @click="deleteResponse(item.id)"
+            ></v-btn>
+          </div>
+        </template>
+        <template v-slot:item.timestamp="{ item }">
+          {{ new Date(item.timestamp).toLocaleString('en-US', {
+            timeZone: 'Asia/Yekaterinburg',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }) }}
+        </template>
+        <template v-slot:loader>
+          <v-progress-linear indeterminate color="primary"></v-progress-linear>
+        </template>
+        <template v-slot:no-data>
+          <div class="pa-4 text-center text-grey-darken-1">
+            No responses available
+          </div>
+        </template>
+      </v-data-table>
+    </div>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import store from '../store'
 
 const headers = [
-  { title: 'Job Board', key: 'jobBoard' },
-  { title: 'Timestamp', key: 'timestamp' },
+  { 
+    title: 'Job Board',
+    key: 'jobBoard',
+    align: 'start',
+    sortable: true
+  },
+  { 
+    title: 'Time',
+    key: 'timestamp',
+    align: 'start',
+    sortable: true
+  }
 ]
 
 const responses = ref([])
 const loading = ref(false)
 
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleString()
-}
-
 const loadData = async () => {
   loading.value = true
   try {
     const data = await window.electronAPI.loadData()
-    responses.value = data.responses || []
+    if (data && data.responses) {
+      responses.value = data.responses
+    }
   } catch (error) {
     console.error('Error loading data:', error)
   } finally {
@@ -62,53 +94,30 @@ const loadData = async () => {
   }
 }
 
-// Handle both IPC and direct store updates
-const handleUpdate = async () => {
-  await loadData()
-}
-
-// Listen for IPC updates
-const setupIpcListener = () => {
-  window.electronAPI.onUpdateCounter(handleUpdate)
-}
-
-// Remove IPC listener
-const cleanupIpcListener = () => {
-  // Cleanup is handled by Electron
-}
-
-// Watch for store changes
-watch(() => store.state.responses, async (newResponses) => {
-  if (newResponses) {
-    responses.value = newResponses
+const deleteResponse = async (id) => {
+  try {
+    loading.value = true
+    await window.electronAPI.deleteResponse(id)
+    await loadData()
+  } catch (error) {
+    console.error('Error deleting response:', error)
+  } finally {
+    loading.value = false
   }
-}, { deep: true })
+}
 
-onMounted(async () => {
-  await loadData()
-  setupIpcListener()
-  // Initial sync with store
-  if (store.state.responses.length > 0) {
-    responses.value = store.state.responses
-  }
+// Единственный обработчик обновлений
+window.electronAPI.onUpdateCounter(() => {
+  loadData()
 })
 
-onUnmounted(() => {
-  cleanupIpcListener()
+onMounted(() => {
+  loadData()
 })
 </script>
 
 <style scoped>
 .v-data-table {
-  background: transparent;
-}
-
-:deep(.v-data-table-header) {
-  background-color: #f5f5f5;
-}
-
-:deep(.v-data-table-header th) {
-  font-weight: bold !important;
-  color: rgba(0, 0, 0, 0.87) !important;
+  background: transparent !important;
 }
 </style>
