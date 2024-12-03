@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cover Letter Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="container mx-auto px-4 py-8 max-w-2xl">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Cover Letter Generator</h1>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Position</label>
+                    <input type="text" v-model="position" placeholder="Enter position" 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Hiring Manager's Name</label>
+                    <input type="text" v-model="hiringManager" placeholder="Hiring Manager" 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                </div>
+
+                <div class="flex items-center">
+                    <label class="flex items-center">
+                        <input type="checkbox" v-model="includeExtra" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <span class="ml-2 text-sm text-gray-600">Include additional paragraph</span>
+                    </label>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4 mt-4">
+                    <h2 class="font-medium mb-2">Email Subject:</h2>
+                    <div class="flex space-x-2">
+                        <input type="text" v-model="emailSubject" readonly
+                               class="flex-grow p-2 border rounded-md font-mono text-sm bg-white">
+                        <button @click="copyEmailSubject" 
+                                class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Copy Subject
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4 mt-4">
+                    <h2 class="font-medium mb-2">Edit and Preview:</h2>
+                    <textarea 
+                        v-model="customText" 
+                        class="w-full h-64 p-2 border rounded-md font-mono text-sm"
+                        @input="updateCustomText"
+                    ></textarea>
+                    <div class="flex space-x-4 mt-2">
+                        <button @click="copyCoverLetter" 
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Copy Cover Letter
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded p-4 mt-4">
+                    <h2 class="font-medium mb-2">Comment Templates:</h2>
+                    <textarea 
+                        v-model="commentText" 
+                        class="w-full h-32 p-2 border rounded-md font-mono text-sm"
+                        @input="updateCommentText"
+                    ></textarea>
+                    <div class="flex space-x-4 mt-2">
+                        <button @click="getNextComment" 
+                                class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                            Next Comment Template
+                        </button>
+                        <button @click="copyComment" 
+                                class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Copy Comment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    position: '',
+                    hiringManager: '',
+                    includeExtra: false,
+                    customText: '',
+                    commentText: '',
+                    emailSubject: '',
+                    subjectTemplates: [
+                        "Software Developer Application - [position]",
+                        "Senior Developer Position Application - [position]",
+                        "Job Application for [position] Role"
+                    ],
+                    commentTemplates: [
+                        "Hi [manager]! The [position] role perfectly aligns with my experience in full-stack development and passion for building scalable applications. I've implemented similar solutions in my projects (magzhan.me, github.com/markbrutx) using modern tech stacks. Would love to discuss how my background matches your team's needs.",
+                        
+                        "Thank you for sharing this opportunity, [manager]. My background in building end-to-end solutions would be valuable for the [position] role. You can see my approach to architecture and clean code practices in my recent projects at magzhan.me and github.com/markbrutx. Looking forward to potentially discussing this further!",
+                        
+                        "Hi [manager], I noticed your [position] opening and I'm genuinely excited about it. Having experience with similar technical challenges, I'd love to share how my solutions (showcased at magzhan.me and github.com/markbrutx) align with your requirements. Let me know if you'd like to connect!",
+                        
+                        "[manager], I came across your [position] role and I'm very interested. My portfolio (magzhan.me) demonstrates my focus on writing maintainable, efficient code, while my GitHub (github.com/markbrutx) shows my other projects. Would appreciate the opportunity to discuss how I can contribute to your team.",
+                        
+                        "Hello [manager]! I'm reaching out about the [position] position. With my track record of delivering robust solutions (detailed at magzhan.me) and strong coding practices (github.com/markbrutx), I believe I could bring valuable expertise to your team. Would you be open to a conversation about the role?"
+                    ],
+                    defaultText: `Dear [manager],
+
+[extra]I invite you to explore my extensive development experience and portfolio at https://magzhan.me, where I've showcased my full range of projects and skills. You can also find my code samples at https://github.com/markbrutx.
+
+Best regards,
+Magzhan`
+                }
+            },
+            computed: {
+                generatedText() {
+                    if (!this.customText) {
+                        this.initializeDefaultText();
+                    }
+                    return this.customText;
+                }
+            },
+            methods: {
+                initializeDefaultText() {
+                    const manager = this.hiringManager.trim() || 'Hiring Manager';
+                    let text = this.defaultText.replace('[manager]', manager);
+                    
+                    let extraText = '';
+                    if (this.includeExtra) {
+                        const positionText = this.position.trim() ? ` the ${this.position} position` : 'this position';
+                        extraText = `I am writing to express my strong interest in${positionText}. Along with my resume, `;
+                    }
+                    
+                    text = text.replace('[extra]', extraText);
+                    this.customText = text;
+                },
+                getRandomSubject() {
+                    const template = this.subjectTemplates[Math.floor(Math.random() * this.subjectTemplates.length)];
+                    const position = this.position.trim() || 'Developer';
+                    return template.replace('[position]', position);
+                },
+                async copyEmailSubject() {
+                    try {
+                        await navigator.clipboard.writeText(this.emailSubject);
+                        this.emailSubject = this.getRandomSubject();
+                    } catch (err) {
+                        console.error('Failed to copy subject: ', err);
+                    }
+                },
+                updateCustomText() {
+                    // Custom text is already updated via v-model
+                },
+                async copyToClipboard() {
+                    try {
+                        await navigator.clipboard.writeText(this.generatedText);
+                        this.emailSubject = this.getRandomSubject();
+                    } catch (err) {
+                        console.error('Failed to copy text: ', err);
+                    }
+                },
+                async copyAndReset() {
+                    await this.copyToClipboard()
+                    this.position = ''
+                    this.hiringManager = ''
+                    this.includeExtra = false
+                    this.customText = ''
+                    this.commentText = ''
+                    this.initializeDefaultText()
+                    this.initializeCommentText()
+                },
+                initializeCommentText() {
+                    const template = this.commentTemplates[Math.floor(Math.random() * this.commentTemplates.length)];
+                    const position = this.position.trim() || 'Software Engineer';
+                    const manager = this.hiringManager.trim() || 'there';
+                    this.commentText = template
+                        .replace('[position]', position)
+                        .replace('[manager]', manager);
+                },
+                getNextComment() {
+                    this.initializeCommentText();
+                },
+                updateCommentText() {
+                    // Comment text is already updated via v-model
+                },
+                async copyComment() {
+                    try {
+                        await navigator.clipboard.writeText(this.commentText);
+                        this.position = '';
+                        this.hiringManager = '';
+                        this.includeExtra = false;
+                        this.customText = '';
+                        this.commentText = '';
+                        this.initializeDefaultText();
+                        this.initializeCommentText();
+                        this.emailSubject = this.getRandomSubject();
+                    } catch (err) {
+                        console.error('Failed to copy comment: ', err);
+                    }
+                },
+                async copyCoverLetter() {
+                    try {
+                        await navigator.clipboard.writeText(this.customText);
+                        this.position = '';
+                        this.hiringManager = '';
+                        this.includeExtra = false;
+                        this.customText = '';
+                        this.commentText = '';
+                        this.initializeDefaultText();
+                        this.initializeCommentText();
+                        this.emailSubject = this.getRandomSubject();
+                    } catch (err) {
+                        console.error('Failed to copy cover letter: ', err);
+                    }
+                },
+            },
+            watch: {
+                position() { 
+                    this.initializeDefaultText();
+                    this.emailSubject = this.getRandomSubject();
+                    this.initializeCommentText();
+                },
+                hiringManager() { 
+                    this.initializeDefaultText();
+                    this.initializeCommentText();
+                },
+                includeExtra() { this.initializeDefaultText() }
+            },
+            mounted() {
+                this.initializeDefaultText();
+                this.emailSubject = this.getRandomSubject();
+                this.initializeCommentText();
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
