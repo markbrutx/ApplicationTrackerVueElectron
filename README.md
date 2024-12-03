@@ -41,7 +41,7 @@ The app turns each application into a small victory with satisfying sound effect
 
 ## Getting Started
 
-1. See [BUILD.md](src/docs/BUILD.md) for setup instructions
+1. See [BUILD.md](src/docs/BUILD.md) for build (exe, dmg) instructions
 2. Follow [FIREBASE_SETUP.md](src/docs/FIREBASE_SETUP.md) for Firebase configuration
 
 ## License
