@@ -2,6 +2,7 @@
   "name": "applyelectron",
   "private": true,
   "version": "1.0.0",
+  "description": "Desktop app that gamifies job applications with progress tracking, achievement streaks, and template generation. Built with Vue + Electron.",
   "main": "electron/main.js",
   "type": "commonjs",
   "scripts": {
