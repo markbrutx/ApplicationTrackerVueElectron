@@ -11,6 +11,20 @@ A desktop app that turns job applications into an engaging process with progress
   - Built-in cover letter and comment generator
   - Analytics dashboard with charts and insights
 
+## Screenshots
+
+### Summary Dashboard
+![Summary Dashboard](src/preview/summary.png)
+Track your application progress and achievements in a clean, intuitive interface.
+
+### Recent Applications
+![Recent Applications](src/preview/recent.png)
+View and manage your recent job applications with detailed information.
+
+### Template Generator
+![Template Generator](src/preview/tool.png)
+Generate customized cover letters and comments quickly with built-in templates.
+
 ## Tech Stack
 
 - Vue.js 3 + Vuex + Vuetify
