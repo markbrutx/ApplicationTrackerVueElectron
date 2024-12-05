@@ -1,12 +1,15 @@
 import { createStore } from 'vuex'
+import path from 'path'
 
-const basicSound = '/sounds/success_sound.mp3'
+// В production используем путь относительно __dirname
+const isDev = process.env.NODE_ENV === 'development'
+const basicSound = isDev ? '/sounds/success_sound.mp3' : '../sounds/success_sound.mp3'
 const advancedSounds = [
-  '/sounds/success1.MP3',
-  '/sounds/success2.MP3',
-  '/sounds/success3.MP3',
-  '/sounds/success4.MP3',
-  '/sounds/success5.MP3'
+  isDev ? '/sounds/success1.MP3' : '../sounds/success1.MP3',
+  isDev ? '/sounds/success2.MP3' : '../sounds/success2.MP3',
+  isDev ? '/sounds/success3.MP3' : '../sounds/success3.MP3',
+  isDev ? '/sounds/success4.MP3' : '../sounds/success4.MP3',
+  isDev ? '/sounds/success5.MP3' : '../sounds/success5.MP3'
 ]
 
 const state = {
@@ -51,26 +54,31 @@ export default createStore({
   state,
   actions: {
     async addResponse({ commit, state }, jobBoard) {
-      const timestamp = new Date().toISOString()
-      await window.electronAPI.saveData({ jobBoard, timestamp })
-      await this.dispatch('loadData')
-      
-      // Calculate new streak
+      // Calculate new streak first
       const newStreak = (state.currentStreak % 5) + 1
       
       // If we completed previous streak (at 5)
       if (state.currentStreak === 5) {
-        // Toggle between basic and advanced streaks
         commit('toggleStreakType')
-        // Reset streak to 1 for new cycle
         commit('setStreak', 1)
       } else {
         commit('setStreak', newStreak)
       }
       
-      // Play the appropriate sound
+      // Play sound immediately
       await this.dispatch('playSound')
-      await this.dispatch('updateCounts')
+      
+      // Save data
+      const timestamp = new Date().toISOString()
+      const data = await window.electronAPI.saveData({ jobBoard, timestamp })
+      commit('setResponses', data.responses)
+      commit('setTodayCount', data.responses.filter(r => {
+        const responseDate = new Date(r.timestamp)
+        const today = new Date()
+        return responseDate.getDate() === today.getDate() &&
+               responseDate.getMonth() === today.getMonth() &&
+               responseDate.getFullYear() === today.getFullYear()
+      }).length)
     },
 
     async deleteResponse({ commit }, id) {

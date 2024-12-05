@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Pie, Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -99,12 +99,9 @@ import {
   CategoryScale,
   LinearScale,
   PointElement,
-  LineElement,
-  Title
+  LineElement
 } from 'chart.js'
-import store from '../store'
 
-// Register ChartJS components
 ChartJS.register(
   ArcElement,
   Tooltip,
@@ -112,23 +109,51 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
-  LineElement,
-  Title
+  LineElement
 )
 
-const headers = [
-  { title: 'Job Board', key: 'jobBoard' },
-  { title: 'Today', key: 'todayCount' },
-  { title: 'Total', key: 'totalCount' },
-]
-
 const responses = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const todayCount = ref(0)
 const currentStreak = ref(0)
 const totalApplications = computed(() => responses.value.length)
 
-// Chart colors
+const updateTodayCount = () => {
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  todayCount.value = responses.value.filter(r => {
+    const responseDate = new Date(r.timestamp)
+    return responseDate >= todayStart && responseDate <= todayEnd
+  }).length
+}
+
+const calculateStreak = () => {
+  let streak = 0
+  let currentDate = new Date()
+  currentDate.setHours(0, 0, 0, 0)
+
+  // Проверяем каждый день, начиная с сегодняшнего
+  while (true) {
+    const dayStart = new Date(currentDate)
+    const dayEnd = new Date(currentDate)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    // Проверяем есть ли отклики за этот день
+    const hasResponses = responses.value.some(r => {
+      const responseDate = new Date(r.timestamp)
+      return responseDate >= dayStart && responseDate <= dayEnd
+    })
+
+    if (!hasResponses) break
+    streak++
+    currentDate.setDate(currentDate.getDate() - 1)
+  }
+
+  currentStreak.value = streak
+}
+
 const chartColors = [
   'rgb(54, 162, 235)',
   'rgb(255, 99, 132)',
@@ -240,18 +265,20 @@ const summaryData = computed(() => {
   return Object.values(summary)
 })
 
+const headers = [
+  { title: 'Job Board', key: 'jobBoard' },
+  { title: 'Today', key: 'todayCount' },
+  { title: 'Total', key: 'totalCount' },
+]
+
 const loadData = async () => {
   loading.value = true
   try {
-    if (!window.electronAPI) {
-      console.error('Electron API not available')
-      return
-    }
     const data = await window.electronAPI.loadData()
-    if (data) {
-      responses.value = data.responses || []
-      calculateStreak()
+    if (data && data.responses) {
+      responses.value = data.responses
       updateTodayCount()
+      calculateStreak()
     }
   } catch (error) {
     console.error('Error loading data:', error)
@@ -260,90 +287,21 @@ const loadData = async () => {
   }
 }
 
-// Handle both IPC and direct store updates
-const handleUpdate = async () => {
-  await loadData()
-}
-
-// Listen for IPC updates
-const setupIpcListener = () => {
-  if (typeof window === 'undefined' || !window.electronAPI) {
-    console.error('Electron API not available')
-    return
-  }
-  
-  try {
-    const cleanup = window.electronAPI.onUpdateCounter(handleUpdate)
-    if (typeof cleanup === 'function') {
-      onUnmounted(cleanup)
-    }
-  } catch (error) {
-    console.error('Error setting up IPC listener:', error)
-  }
-}
-
-const calculateStreak = () => {
-  let streak = 0
-  let currentDate = new Date()
-  currentDate.setHours(0, 0, 0, 0)
-
-  while (true) {
-    const dayStart = new Date(currentDate)
-    const dayEnd = new Date(currentDate)
-    dayEnd.setHours(23, 59, 59, 999)
-
-    const hasResponses = responses.value.some(r => {
-      const responseDate = new Date(r.timestamp)
-      return responseDate >= dayStart && responseDate <= dayEnd
-    })
-
-    if (!hasResponses) break
-    streak++
-    currentDate.setDate(currentDate.getDate() - 1)
-  }
-
-  currentStreak.value = streak
-}
-
-const updateTodayCount = () => {
-  const today = new Date()
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-  
-  todayCount.value = responses.value.filter(r => {
-    const responseDate = new Date(r.timestamp)
-    return responseDate >= todayStart && responseDate <= todayEnd
-  }).length
-}
-
 onMounted(async () => {
-  try {
+  await loadData()
+  
+  // Подписываемся на обновления
+  window.electronAPI.onUpdateCounter(async () => {
     await loadData()
-    setupIpcListener()
-    // Initial sync with store
-    if (store.state.responses && store.state.responses.length > 0) {
-      responses.value = store.state.responses
-      calculateStreak()
-      updateTodayCount()
-    }
-  } catch (error) {
-    console.error('Error in mounted hook:', error)
-  }
+  })
 })
-
-// Watch for store changes
-watch(() => store.state.responses, async (newResponses) => {
-  if (newResponses) {
-    responses.value = newResponses
-    calculateStreak()
-    updateTodayCount()
-  }
-}, { deep: true })
 </script>
 
 <style scoped>
 .summary-container {
   padding: 16px;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .stat-card {

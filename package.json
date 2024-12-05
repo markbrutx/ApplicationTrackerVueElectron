@@ -1,7 +1,8 @@
 {
   "name": "applyelectron",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "author": "Magzhan",
   "description": "Desktop app that gamifies job applications with progress tracking, achievement streaks, and template generation. Built with Vue + Electron.",
   "main": "electron/main.js",
   "type": "commonjs",
@@ -11,8 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:build": "vite build && electron-builder",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "npm run rebuild"
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -31,22 +31,66 @@
     "wait-on": "^7.2.0"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.5.0",
     "@vitejs/plugin-vue": "^5.0.3",
     "electron": "^28.2.1",
     "electron-builder": "^24.9.1",
-    "electron-rebuild": "^3.2.9",
     "http-server": "^14.1.1",
     "vite": "^5.0.12"
   },
   "build": {
-    "appId": "com.jobtracker.app",
+    "appId": "com.applyelectron.app",
+    "productName": "Application Tracker",
     "directories": {
       "output": "dist_electron"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "public/**/*"
-    ]
+      "public/sounds/**/*",
+      "public/*.ico",
+      "public/*.icns"
+    ],
+    "extraResources": [
+      {
+        "from": "public/sounds",
+        "to": "sounds"
+      },
+      {
+        "from": "public/templategen",
+        "to": "public/templategen"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null,
+      "icon": "public/apptr.icns"
+    },
+    "afterSign": null,
+    "protocols": {
+      "name": "Application Tracker",
+      "schemes": [
+        "applicationtracker"
+      ]
+    },
+    "dmg": {
+      "sign": false,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

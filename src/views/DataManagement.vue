@@ -16,6 +16,13 @@
       <v-divider></v-divider>
       <div class="content-area pa-6">
         <div class="actions">
+          <v-switch
+            v-model="notificationsEnabled"
+            color="primary"
+            label="Notifications"
+            class="mb-4"
+            @change="toggleNotifications"
+          ></v-switch>
           <v-btn
             color="warning"
             @click="clearTodayData"
@@ -56,11 +63,28 @@
 </template>
 
 <script setup>
-import { useStore } from 'vuex'
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 
-const store = useStore()
-const responses = computed(() => store.state.responses)
+const responses = ref([])
+const notificationsEnabled = ref(localStorage.getItem('notificationsEnabled') === 'true')
+
+const loadData = async () => {
+  try {
+    const data = await window.electronAPI.loadData()
+    responses.value = data.responses || []
+  } catch (error) {
+    console.error('Error loading data:', error)
+  }
+}
+
+onMounted(async () => {
+  await loadData()
+  
+  // Listen for updates
+  window.electronAPI.onUpdateCounter(() => {
+    loadData()
+  })
+})
 
 const showConfirmDialog = (message, title) => {
   return new Promise((resolve) => {
@@ -79,7 +103,7 @@ const clearTodayData = async () => {
   )
   if (confirmed) {
     try {
-      await store.dispatch('clearTodayData')
+      await window.electronAPI.clearTodayData()
     } catch (error) {
       console.error('Error clearing today\'s data:', error)
     }
@@ -93,7 +117,7 @@ const deleteAllData = async () => {
   )
   if (confirmed) {
     try {
-      await store.dispatch('deleteAllData')
+      await window.electronAPI.deleteAllData()
     } catch (error) {
       console.error('Error deleting all data:', error)
     }
@@ -110,6 +134,11 @@ const downloadJson = () => {
   a.download = 'responses.json'
   a.click()
   window.URL.revokeObjectURL(url)
+}
+
+const toggleNotifications = () => {
+  localStorage.setItem('notificationsEnabled', notificationsEnabled.value)
+  window.electron.send('toggle-notifications', notificationsEnabled.value)
 }
 </script>
 

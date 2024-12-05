@@ -1,6 +1,6 @@
 <template>
   <v-app theme="dark">
-    <v-app-bar flat height="64">
+    <v-app-bar flat height="64" class="px-4">
       <template v-slot:prepend>
         <div class="d-flex align-center">
           <v-icon
@@ -128,16 +128,8 @@ const updateCounter = async () => {
   if (selectedJobBoard.value && !loading.value) {
     loading.value = true
     try {
-      const success = await window.electronAPI.saveData({
-        jobBoard: selectedJobBoard.value,
-        timestamp: getCurrentTimeUTC5()
-      })
-      if (success) {
-        store.commit('incrementTodayCount')
-        store.commit('updateCurrentStreak')
-        // Воспроизводим звук после обновления стрика
-        await store.dispatch('playSound')
-      }
+      // Используем действие из store вместо прямого сохранения
+      await store.dispatch('addResponse', selectedJobBoard.value)
     } catch (error) {
       console.error('Error updating counter:', error)
     } finally {

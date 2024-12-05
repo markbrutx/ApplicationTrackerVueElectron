@@ -11,5 +11,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveData: (data) => ipcRenderer.invoke('save-data', data),
   deleteResponse: (id) => ipcRenderer.invoke('delete-response', id),
   clearTodayData: () => ipcRenderer.invoke('clear-today-data'),
-  clearStore: () => ipcRenderer.invoke('clear-store')
+  clearStore: () => ipcRenderer.invoke('clear-store'),
+  send: (channel, data) => {
+    let validChannels = [
+      'toMain',
+      'download',
+      'toggle-notifications'
+    ]
+  }
 })
