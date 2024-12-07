@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import RecentResponses from '../views/RecentResponses.vue'
 import Summary from '../views/Summary.vue'
 import DataManagement from '../views/DataManagement.vue'
+import JobBoardsStats from '../views/JobBoardsStats.vue'
 
 const routes = [
   {
@@ -22,6 +23,11 @@ const routes = [
     path: '/data-management',
     name: 'Data Management',
     component: DataManagement
+  },
+  {
+    path: '/job-boards',
+    name: 'Job Boards Stats',
+    component: JobBoardsStats
   }
 ]
 

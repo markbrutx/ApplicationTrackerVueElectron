@@ -96,6 +96,7 @@
             <v-tab value="recent" class="text-body-1">Recent</v-tab>
             <v-tab value="summary" class="text-body-1">Summary</v-tab>
             <v-tab value="data-management" class="text-body-1">Data Management</v-tab>
+            <v-tab value="job-boards" class="text-body-1">Job Boards</v-tab>
           </v-tabs>
 
           <router-view class="content-area" />
@@ -172,7 +173,8 @@ const handleJobBoardSelect = (value) => {
 // Watch for tab changes and update route
 watch(activeTab, (newValue) => {
   router.push(newValue === 'recent' ? '/recent' : 
-              newValue === 'summary' ? '/summary' : '/data-management')
+              newValue === 'summary' ? '/summary' : 
+              newValue === 'job-boards' ? '/job-boards' : '/data-management')
 })
 
 // Watch for responses changes and update counts
@@ -183,7 +185,7 @@ watch(() => store.state.responses, () => {
 onMounted(async () => {
   await store.dispatch('loadData')
   const route = router.currentRoute.value.path
-  activeTab.value = route === '/summary' ? 'summary' : route === '/data-management' ? 'data-management' : 'recent'
+  activeTab.value = route === '/summary' ? 'summary' : route === '/data-management' ? 'data-management' : route === '/job-boards' ? 'job-boards' : 'recent'
   setupShortcut()
 })
 

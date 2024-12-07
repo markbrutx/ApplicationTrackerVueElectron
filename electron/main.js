@@ -316,6 +316,10 @@ ipcMain.handle('open-cover-letter-template', async () => {
   }
 })
 
+ipcMain.handle('open-in-browser', async (event, url) => {
+  await shell.openExternal(url)
+})
+
 ipcMain.on('toggle-notifications', (event, enabled) => {
   notificationsEnabled = enabled;
 })

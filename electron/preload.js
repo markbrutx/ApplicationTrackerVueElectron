@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteResponse: (id) => ipcRenderer.invoke('delete-response', id),
   clearTodayData: () => ipcRenderer.invoke('clear-today-data'),
   clearStore: () => ipcRenderer.invoke('clear-store'),
+  openInBrowser: (url) => ipcRenderer.invoke('open-in-browser', url),
   send: (channel, data) => {
     let validChannels = [
       'toMain',
