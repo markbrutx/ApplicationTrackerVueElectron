@@ -146,6 +146,7 @@ app.on('ready', async () => {
   try {
     await initializeFirebase()
     await createWindow()
+    await startTemplateServer()
     logToFile('Window created successfully')
     
     globalShortcut.register('F9', () => {
@@ -267,7 +268,9 @@ ipcMain.handle('load-data', async () => {
 
 ipcMain.handle('save-data', async (event, data) => {
   try {
-    await db.saveData(data);
+    if (data.jobBoard) {
+      await db.addResponse(data.jobBoard);
+    }
     return true;
   } catch (error) {
     console.error('Error saving data:', error);
@@ -351,11 +354,15 @@ ipcMain.handle('update-counter', (event) => {
 
 ipcMain.handle('open-cover-letter-template', async () => {
   try {
-    const templatePath = path.join(__dirname, '../templates/cover-letter-template.txt');
-    await shell.openPath(templatePath);
+    // Open template in default browser
+    await shell.openExternal('http://localhost:8080');
     return true;
   } catch (error) {
     console.error('Error opening template:', error);
+    dialog.showErrorBox(
+      'Template Error',
+      `Failed to open template: ${error.message}`
+    );
     return false;
   }
 });
@@ -391,7 +398,16 @@ ipcMain.handle('checkCharacterStatus', async () => {
 
 ipcMain.handle('gainExperience', async () => {
   try {
-    const result = await db.characterManager.addExperience();
+    const responses = await db.getAllResponses();
+    const streak = responses.filter(r => {
+      const responseDate = new Date(r.timestamp);
+      const today = new Date();
+      return responseDate.getDate() === today.getDate() &&
+             responseDate.getMonth() === today.getMonth() &&
+             responseDate.getFullYear() === today.getFullYear();
+    }).length;
+
+    const result = await db.characterManager.addExperience(streak);
     if (result) {
       mainWindow.webContents.send('xp-gained', result);
     }
@@ -404,8 +420,4 @@ ipcMain.handle('gainExperience', async () => {
 
 ipcMain.on('toggle-notifications', (event, enabled) => {
   notificationsEnabled = enabled;
-})
-
-app.on('ready', () => {
-  startTemplateServer();
 })
