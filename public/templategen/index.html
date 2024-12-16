@@ -28,14 +28,20 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">{{ translations[currentLang].hiringManager }}</label>
-                    <input type="text" v-model="hiringManager" :placeholder="translations[currentLang].hiringManagerPlaceholder" 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                    <div class="flex items-center space-x-4">
+                        <input type="text" v-model="hiringManager" :placeholder="translations[currentLang].hiringManagerPlaceholder" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                        <label class="flex items-center">
+                            <input type="checkbox" v-model="useHiringManager" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <span class="ml-2 text-sm text-gray-600">{{ translations[currentLang].useHiringManager }}</span>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="flex items-center">
+                <div class="space-y-2">
                     <label class="flex items-center">
-                        <input type="checkbox" v-model="includeExtra" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <span class="ml-2 text-sm text-gray-600">{{ translations[currentLang].includeExtra }}</span>
+                        <input type="checkbox" v-model="isRelocation" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <span class="ml-2 text-sm text-gray-600">{{ translations[currentLang].isRelocation }}</span>
                     </label>
                 </div>
 
@@ -56,7 +62,7 @@
                     <textarea 
                         v-model="customText" 
                         class="w-full h-64 p-2 border rounded-md font-mono text-sm"
-                        @input="updateCustomText"
+                        @input="updateTemplate"
                     ></textarea>
                     <div class="flex space-x-4 mt-2">
                         <button @click="copyCoverLetter" 
@@ -71,7 +77,7 @@
                     <textarea 
                         v-model="commentText" 
                         class="w-full h-32 p-2 border rounded-md font-mono text-sm"
-                        @input="updateCommentText"
+                        @input="updateComment"
                     ></textarea>
                     <div class="flex space-x-4 mt-2">
                         <button @click="getNextComment" 
@@ -89,153 +95,211 @@
     </div>
 
     <script>
+        // Template Configuration
+        const TEMPLATE_CONFIG = {
+            // Email subjects
+            subjects: {
+                en: [
+                    "Software Developer Application - [position]",
+                    "Senior Developer Position - [position]",
+                    "Job Application for [position] Role"
+                ],
+                ru: [
+                    "Отклик на вакансию [position]",
+                    "Заявка на позицию [position]",
+                    "Резюме на должность [position]"
+                ]
+            },
+            // Full cover letters
+            coverLetters: {
+                en: [
+                    "[greeting][manager][greeting_end]\n\nI’m excited about the [position_text]. My track record is showcased at magzhan.me, and my code is available at github.com/markbrutx. I’m confident my experience will benefit your team.[work_mode][relocation]\n\nBest regards,\nMagzhan",
+                    "[greeting][manager][greeting_end]\n\nFor the [position_text], I invite you to review my work at magzhan.me and my repositories at github.com/markbrutx. I believe my skill set aligns well with this role.[work_mode][relocation]\n\nBest regards,\nMagzhan",
+                    "[greeting][manager][greeting_end]\n\nI’m applying for the [position_text]. Please take a moment to view my portfolio at magzhan.me and my code samples at github.com/markbrutx. I look forward to contributing to your team’s success.[work_mode][relocation]\n\nBest regards,\nMagzhan"
+                ],
+                ru: [
+                    "[greeting][manager][greeting_end]\n\nЯ искренне заинтересован в работе [position_text]. Предлагаю ознакомиться с моим портфолио на magzhan.me и кодом на github.com/markbrutx. Уверен, что смогу усилить вашу команду.[relocation]\n\nС уважением,\nМагжан",
+                    "[greeting][manager][greeting_end]\n\nМеня привлекает возможность работы [position_text]. Мои проекты и опыт представлены на magzhan.me, а примеры кода — на github.com/markbrutx. Надеюсь, мои навыки будут полезны вашей компании.[relocation]\n\nС уважением,\nМагжан",
+                    "[greeting][manager][greeting_end]\n\nЯ хочу откликнуться [position_text]. Прошу уделить минуту моим работам на magzhan.me и репозиториям на github.com/markbrutx. Рассчитываю принести реальную пользу вашей команде.[relocation]\n\nС уважением,\nМагжан"
+                ]
+                },
+            // Quick comments for job posts
+            comments: {
+                en: [
+                    "[greeting][manager][greeting_end] Thanks for sharing this opportunity! Feel free to check out my projects at magzhan.me and my code on github.com/markbrutx. I’d be happy to chat more.[work_mode][relocation]",
+                    "[greeting][manager][greeting_end] Appreciate you posting about the opening. Please take a look at my portfolio (magzhan.me) and code (github.com/markbrutx). Let’s connect![work_mode][relocation]",
+                    "[greeting][manager][greeting_end] Thanks for putting this out there! My work is at magzhan.me and my code’s at github.com/markbrutx. Would love to discuss the role further.[work_mode][relocation]"
+                ],
+                ru: [
+                    "[greeting][manager][greeting_end] Спасибо, что поделились вакансией! Мои проекты на magzhan.me, код — на github.com/markbrutx. Буду рад обсудить детали![relocation]",
+                    "[greeting][manager][greeting_end] Признателен за то, что выложили позицию. Портфолио: magzhan.me, репозитории: github.com/markbrutx. Готов к разговору![relocation]",
+                    "[greeting][manager][greeting_end] Спасибо за информацию о роли! Загляните на magzhan.me и github.com/markbrutx. С удовольствием поговорю подробнее![relocation]"
+                ]
+                },
+            // Greetings
+            greetings: {
+                en: {
+                    with_manager: "Dear",
+                    without_manager: "Hello",
+                    end: "!"
+                },
+                ru: {
+                    with_manager: "Здравствуйте",
+                    without_manager: "Приветствую",
+                    end: "!"
+                }
+            },
+            // Work modes text
+            workModes: {
+                en: {
+                    text: " I'm open to full-time, B2B, or contract work arrangements."
+                },
+                ru: {
+                    text: " Рассматриваю full-time, B2B или контрактный формат работы."
+                }
+            },
+            // Relocation text
+            relocation: {
+                en: " Ready to relocate",
+                ru: " Готов к релокации"
+            }
+        };
+
+        // UI Translations
+        const UI_TRANSLATIONS = {
+            en: {
+                title: 'Cover Letter Generator',
+                position: 'Position',
+                enterPosition: 'Enter position',
+                hiringManager: "Hiring Manager's Name",
+                hiringManagerPlaceholder: 'Hiring Manager',
+                emailSubject: 'Email Subject',
+                copySubject: 'Copy Subject',
+                editPreview: 'Edit and Preview',
+                copyCoverLetter: 'Copy Cover Letter',
+                isRelocation: 'Open to relocation',
+                useHiringManager: 'Use generic "Hiring Manager"',
+                commentTemplates: 'Comment Templates',
+                nextComment: 'Next Comment Template',
+                copyComment: 'Copy Comment'
+            },
+            ru: {
+                title: 'Генератор Сопроводительного Письма',
+                position: 'Должность',
+                enterPosition: 'Введите должность',
+                hiringManager: 'Имя Менеджера по Найму',
+                hiringManagerPlaceholder: 'Менеджер по найму',
+                emailSubject: 'Тема письма',
+                copySubject: 'Копировать тему',
+                editPreview: 'Редактировать и просмотреть',
+                copyCoverLetter: 'Копировать письмо',
+                isRelocation: 'Готов к релокации',
+                useHiringManager: 'Использовать "Менеджер по найму"',
+                commentTemplates: 'Шаблоны комментариев',
+                nextComment: 'Следующий шаблон',
+                copyComment: 'Копировать комментарий'
+            }
+        };
+
         const { createApp } = Vue
 
         createApp({
             data() {
                 return {
                     currentLang: localStorage.getItem('preferredLanguage') || 'en',
-                    translations: {
-                        en: {
-                            title: 'Cover Letter Generator',
-                            position: 'Position',
-                            enterPosition: 'Enter position',
-                            hiringManager: "Hiring Manager's Name",
-                            hiringManagerPlaceholder: 'Hiring Manager',
-                            includeExtra: 'Include additional paragraph',
-                            emailSubject: 'Email Subject',
-                            copySubject: 'Copy Subject',
-                            editPreview: 'Edit and Preview',
-                            copyCoverLetter: 'Copy Cover Letter',
-                            commentTemplates: 'Comment Templates',
-                            nextComment: 'Next Comment Template',
-                            copyComment: 'Copy Comment'
-                        },
-                        ru: {
-                            title: 'Генератор Сопроводительного Письма',
-                            position: 'Должность',
-                            enterPosition: 'Введите должность',
-                            hiringManager: 'Имя Менеджера по Найму',
-                            hiringManagerPlaceholder: 'Менеджер по найму',
-                            includeExtra: 'Включить дополнительный параграф',
-                            emailSubject: 'Тема письма',
-                            copySubject: 'Копировать тему',
-                            editPreview: 'Редактировать и просмотреть',
-                            copyCoverLetter: 'Копировать письмо',
-                            commentTemplates: 'Шаблоны комментариев',
-                            nextComment: 'Следующий шаблон',
-                            copyComment: 'Копировать комментарий'
-                        }
-                    },
+                    translations: UI_TRANSLATIONS,
                     position: '',
                     hiringManager: '',
-                    includeExtra: true,
+                    isRelocation: localStorage.getItem('preferredLanguage') === 'en',
+                    useHiringManager: localStorage.getItem('preferredLanguage') === 'en',
                     customText: '',
                     commentText: '',
                     emailSubject: '',
-                    subjectTemplates: {
-                        en: [
-                            "Software Developer Application - [position]",
-                            "Senior Developer Position Application - [position]",
-                            "Job Application for [position] Role"
-                        ],
-                        ru: [
-                            "Отклик на вакансию [position]",
-                            "Заявка на позицию [position]",
-                            "Резюме на должность [position]"
-                        ]
-                    },
-                    commentTemplates: {
-                        en: [
-                            "Hi [manager]! The [position] role perfectly aligns with my experience in full-stack development and passion for building scalable applications. I've implemented similar solutions in my projects (magzhan.me, github.com/markbrutx) using modern tech stacks. I'm flexible with work arrangements (B2B, full-time, or contract). Would love to discuss how my background matches your team's needs.",
-                            
-                            "Thank you for sharing this opportunity, [manager]. My background in building end-to-end solutions would be valuable for the [position] role. You can see my approach to architecture and clean code practices in my recent projects at magzhan.me and github.com/markbrutx. I'm open to various work arrangements. Looking forward to potentially discussing this further!",
-                            
-                            "Hi [manager], I noticed your [position] opening and I'm genuinely excited about it. Having experience with similar technical challenges, I'd love to share how my solutions (showcased at magzhan.me and github.com/markbrutx) align with your requirements. I'm adaptable to different work models. Let me know if you'd like to connect!"
-                        ],
-                        ru: [
-                            "Здравствуйте[manager_ru]! Позиция [position] отлично соответствует моему опыту full-stack разработки и стремлению создавать масштабируемые приложения. Я реализовал похожие решения в своих проектах (magzhan.me, github.com/markbrutx), используя современные технологии. Я гибок в отношении формата работы (B2B, полная занятость или контракт). Буду рад обсудить, как мой опыт может быть полезен вашей команде.",
-                            
-                            "Здравствуйте[manager_ru]! Мой опыт разработки комплексных решений был бы ценным для позиции [position]. Вы можете оценить мой подход к архитектуре и практики чистого кода в моих недавних проектах на magzhan.me и github.com/markbrutx. Я открыт к различным форматам работы. Буду рад обсудить детали!",
-                            
-                            "Здравствуйте[manager_ru]! Заинтересовался вашей вакансией [position]. Имея опыт работы с похожими техническими задачами, хотел бы поделиться, как мои решения (представленные на magzhan.me и github.com/markbrutx) соответствуют вашим требованиям. Я адаптируюсь к разным моделям работы. Буду рад обсудить возможное сотрудничество!"
-                        ]
-                    },
-                    defaultText: {
-                        en: `Dear [manager],
-
-[extra]I invite you to explore my extensive development experience and portfolio at https://magzhan.me, where I've showcased my full range of projects and skills. You can also find my code samples at https://github.com/markbrutx. I am flexible regarding work arrangements, whether it's B2B, full-time employment, or contract work. I am also open to relocation and would appreciate any assistance with documentation if needed.
-
-Best regards,
-Magzhan`,
-                        ru: `Добрый день, [manager]!
-
-[extra]Приглашаю вас ознакомиться с моим обширным опытом разработки и портфолио на https://magzhan.me, где представлен полный спектр моих проектов и навыков. Примеры моего кода также доступны на https://github.com/markbrutx. Я гибок в отношении формата работы, будь то B2B, полная занятость или контрактная работа.
-
-С уважением,
-Magzhan`
-                    }
                 }
             },
             computed: {
                 generatedText() {
                     if (!this.customText) {
-                        this.initializeDefaultText();
+                        this.updateTemplate();
                     }
                     return this.customText;
                 }
             },
             methods: {
-                initializeDefaultText() {
-                    let greeting = this.currentLang === 'en' ? 'Hello' : 'Здравствуйте';
-                    if (this.hiringManager.trim()) {
-                        greeting += this.currentLang === 'en' ? 
-                            `, ${this.hiringManager}` : 
-                            `, ${this.hiringManager}`;
-                    }
-                    greeting += '!';
-
-                    const positionText = this.position.trim() ? 
-                        (this.currentLang === 'en' ? ` the ${this.position} position` : ` на позицию ${this.position}`) : 
-                        (this.currentLang === 'en' ? 'this position' : 'на данную позицию');
-
-                    let text = this.currentLang === 'en' ?
-                        `${greeting}\n\nI am writing to express my strong interest in${positionText}. With my background in software development and experience building scalable applications, I believe I would be a valuable addition to your team.\n\n` :
-                        `${greeting}\n\nПишу, чтобы выразить свою заинтересованность ${positionText}. Имея опыт разработки программного обеспечения и создания масштабируемых приложений, я уверен, что могу внести ценный вклад в работу вашей команды.\n\n`;
-
-                    if (this.includeExtra) {
-                        text += this.currentLang === 'en' ?
-                            `You can find examples of my work and technical approach on my website (magzhan.me) and GitHub profile (github.com/markbrutx). I am flexible regarding work arrangements and would welcome the opportunity to discuss how my skills align with your team's needs.\n\n` :
-                            `Вы можете ознакомиться с примерами моих работ и техническим подходом на моем сайте (magzhan.me) и профиле GitHub (github.com/markbrutx). Я открыт к обсуждению различных форматов работы и буду рад обсудить, как мои навыки соответствуют потребностям вашей команды.\n\n`;
-                    }
-
-                    text += this.currentLang === 'en' ?
-                        'Thank you for considering my application. I look forward to discussing this opportunity with you.\n\nBest regards,\nMagzhan' :
-                        'Спасибо за рассмотрение моей кандидатуры. Буду рад обсудить возможность сотрудничества.\n\nС уважением,\nМагжан';
-
-                    this.customText = text;
-                },
-                getRandomSubject() {
-                    const templates = this.subjectTemplates[this.currentLang];
+                getRandomTemplate(type) {
+                    // Get random template from config
+                    const templates = TEMPLATE_CONFIG[type][this.currentLang];
                     const template = templates[Math.floor(Math.random() * templates.length)];
-                    const position = this.position.trim() || (this.currentLang === 'en' ? 'Developer' : 'Разработчик');
-                    return template.replace('[position]', position);
+                    
+                    let text = template;
+                    
+                    // Handle greeting and manager name
+                    const manager = this.hiringManager.trim();
+                    let greeting;
+                    let managerText = '';
+                    
+                    if (this.useHiringManager) {
+                        // Using generic Hiring Manager
+                        greeting = TEMPLATE_CONFIG.greetings[this.currentLang].with_manager;
+                        managerText = manager || (this.currentLang === 'en' ? ' Hiring Manager' : ' Менеджер по найму');
+                    } else {
+                        // Not using generic Hiring Manager
+                        greeting = manager ? 
+                            TEMPLATE_CONFIG.greetings[this.currentLang].with_manager : 
+                            TEMPLATE_CONFIG.greetings[this.currentLang].without_manager;
+                        managerText = manager ? (this.currentLang === 'en' ? ' ' + manager : ' ' + manager) : '';
+                    }
+                    
+                    const greetingEnd = TEMPLATE_CONFIG.greetings[this.currentLang].end;
+                    
+                    text = text.replace('[greeting]', greeting);
+                    text = text.replace('[manager]', managerText);
+                    text = text.replace('[greeting_end]', greetingEnd);
+                    
+                    // Handle position text
+                    const position = this.position.trim();
+                    const positionText = this.currentLang === 'en' ?
+                        (position ? ` the ${position} position` : ' this position') :
+                        (position ? ` на позицию ${position}` : 'на данную позицию');
+                    text = text.replace('[position_text]', positionText);
+                    
+                    // Add work mode text
+                    const workMode = TEMPLATE_CONFIG.workModes[this.currentLang].text;
+                    text = text.replace(/\[work_mode\]/g, workMode);
+                    
+                    // Add relocation if checked
+                    const relocation = this.isRelocation ? TEMPLATE_CONFIG.relocation[this.currentLang] : '';
+                    text = text.replace(/\[relocation\]/g, relocation);
+                    
+                    return text;
+                },
+
+                updateTemplate() {
+                    this.customText = this.getRandomTemplate('coverLetters');
+                },
+
+                updateComment() {
+                    this.commentText = this.getRandomTemplate('comments');
+                },
+
+                updateEmailSubject() {
+                    const template = TEMPLATE_CONFIG.subjects[this.currentLang][
+                        Math.floor(Math.random() * TEMPLATE_CONFIG.subjects[this.currentLang].length)
+                    ];
+                    this.emailSubject = template.replace('[position]', this.position || '');
                 },
                 async copyEmailSubject() {
                     try {
                         await navigator.clipboard.writeText(this.emailSubject);
-                        this.emailSubject = this.getRandomSubject();
+                        this.updateEmailSubject();
                     } catch (err) {
                         console.error('Failed to copy subject: ', err);
                     }
                 },
-                updateCustomText() {
-                    // Custom text is already updated via v-model
-                },
                 async copyToClipboard() {
                     try {
                         await navigator.clipboard.writeText(this.generatedText);
-                        this.emailSubject = this.getRandomSubject();
+                        this.updateEmailSubject();
                     } catch (err) {
                         console.error('Failed to copy text: ', err);
                     }
@@ -246,46 +310,40 @@ Magzhan`
                     this.hiringManager = ''
                     this.customText = ''
                     this.commentText = ''
-                    this.initializeDefaultText()
-                    this.initializeCommentText()
+                    this.updateTemplate()
+                    this.updateComment()
+                    this.updateEmailSubject()
                 },
                 initializeCommentText() {
-                    const templates = this.commentTemplates[this.currentLang];
-                    const template = templates[Math.floor(Math.random() * templates.length)];
-                    const position = this.position.trim() || (this.currentLang === 'en' ? 'Software Engineer' : 'Разработчик');
-                    const manager = this.hiringManager.trim();
-                    
-                    let text = template.replace('[position]', position);
-                    
-                    if (this.currentLang === 'en') {
-                        text = text.replace('[manager]', manager ? ` ${manager}` : '');
-                    } else {
-                        text = text.replace('[manager_ru]', manager ? `, ${manager}` : '');
-                    }
-                    
-                    this.commentText = text;
+                    this.commentText = this.getRandomTemplate('comments');
                 },
                 getNextComment() {
-                    const templates = this.commentTemplates[this.currentLang];
+                    const templates = TEMPLATE_CONFIG.comments[this.currentLang];
                     const currentIndex = templates.indexOf(this.commentText);
                     const nextIndex = (currentIndex + 1) % templates.length;
                     const template = templates[nextIndex];
                     
-                    const position = this.position.trim() || (this.currentLang === 'en' ? 'Software Engineer' : 'Разработчик');
-                    const manager = this.hiringManager.trim();
+                    const manager = this.useHiringManager ? 
+                        (this.currentLang === 'en' ? 'Hiring Manager' : 'Менеджер по найму') : 
+                        this.hiringManager;
                     
-                    let text = template.replace('[position]', position);
+                    let text = template;
                     
-                    if (this.currentLang === 'en') {
-                        text = text.replace('[manager]', manager ? ` ${manager}` : '');
-                    } else {
-                        text = text.replace('[manager_ru]', manager ? `, ${manager}` : '');
-                    }
+                    // Replace manager
+                    const managerPrefix = this.currentLang === 'ru' ? 
+                        (manager ? ' ' + manager : '') : 
+                        (manager ? ' ' + manager : '');
+                    text = text.replace(/\[manager\]/g, managerPrefix);
+                    
+                    // Add work mode text
+                    const workMode = TEMPLATE_CONFIG.workModes[this.currentLang].text;
+                    text = text.replace(/\[work_mode\]/g, workMode);
+                    
+                    // Add relocation if checked
+                    const relocation = this.isRelocation ? TEMPLATE_CONFIG.relocation[this.currentLang] : '';
+                    text = text.replace(/\[relocation\]/g, relocation);
                     
                     this.commentText = text;
-                },
-                updateCommentText() {
-                    // Comment text is already updated via v-model
                 },
                 async copyComment() {
                     try {
@@ -294,9 +352,9 @@ Magzhan`
                         this.hiringManager = '';
                         this.customText = '';
                         this.commentText = '';
-                        this.initializeDefaultText();
-                        this.initializeCommentText();
-                        this.emailSubject = this.getRandomSubject();
+                        this.updateTemplate();
+                        this.updateComment();
+                        this.updateEmailSubject();
                     } catch (err) {
                         console.error('Failed to copy comment: ', err);
                     }
@@ -308,9 +366,9 @@ Magzhan`
                         this.hiringManager = '';
                         this.customText = '';
                         this.commentText = '';
-                        this.initializeDefaultText();
-                        this.initializeCommentText();
-                        this.emailSubject = this.getRandomSubject();
+                        this.updateTemplate();
+                        this.updateComment();
+                        this.updateEmailSubject();
                     } catch (err) {
                         console.error('Failed to copy cover letter: ', err);
                     }
@@ -318,26 +376,39 @@ Magzhan`
                 toggleLanguage() {
                     this.currentLang = this.currentLang === 'en' ? 'ru' : 'en';
                     localStorage.setItem('preferredLanguage', this.currentLang);
-                    this.initializeCommentText();
-                    this.initializeDefaultText();
+                    if (this.currentLang === 'en') {
+                        this.isRelocation = true;
+                        this.useHiringManager = true;
+                    } else {
+                        this.isRelocation = false;
+                        this.useHiringManager = false;
+                    }
+                    this.updateComment();
+                    this.updateTemplate();
                 },
             },
             watch: {
                 position() { 
-                    this.initializeDefaultText();
-                    this.emailSubject = this.getRandomSubject();
-                    this.initializeCommentText();
+                    this.updateTemplate();
+                    this.updateEmailSubject();
+                    this.updateComment();
                 },
                 hiringManager() { 
-                    this.initializeDefaultText();
-                    this.initializeCommentText();
+                    this.updateTemplate();
+                    this.updateComment();
                 },
-                includeExtra() { this.initializeDefaultText() }
+                useHiringManager() {
+                    this.updateTemplate();
+                    this.updateComment();
+                },
+                isRelocation() {
+                    this.updateTemplate();
+                    this.updateComment();
+                }
             },
             mounted() {
-                this.initializeDefaultText();
-                this.emailSubject = this.getRandomSubject();
-                this.initializeCommentText();
+                this.updateTemplate()
+                this.updateComment()
             }
         }).mount('#app')
     </script>
