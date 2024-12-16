@@ -54,31 +54,28 @@ export default createStore({
   state,
   actions: {
     async addResponse({ commit, state }, jobBoard) {
-      // Calculate new streak first
-      const newStreak = (state.currentStreak % 5) + 1
-      
-      // If we completed previous streak (at 5)
-      if (state.currentStreak === 5) {
-        commit('toggleStreakType')
-        commit('setStreak', 1)
-      } else {
-        commit('setStreak', newStreak)
+      try {
+        commit('updateCurrentStreak')
+        
+        await this.dispatch('playSound')
+        
+        const timestamp = new Date().toISOString()
+        await window.electronAPI.saveData({ jobBoard, timestamp })
+        
+        const data = await window.electronAPI.loadData()
+        if (data && data.responses) {
+          commit('setResponses', data.responses)
+          commit('setTodayCount', data.responses.filter(r => {
+            const responseDate = new Date(r.timestamp)
+            const today = new Date()
+            return responseDate.getDate() === today.getDate() &&
+                   responseDate.getMonth() === today.getMonth() &&
+                   responseDate.getFullYear() === today.getFullYear()
+          }).length)
+        }
+      } catch (error) {
+        console.error('Error in addResponse:', error)
       }
-      
-      // Play sound immediately
-      await this.dispatch('playSound')
-      
-      // Save data
-      const timestamp = new Date().toISOString()
-      const data = await window.electronAPI.saveData({ jobBoard, timestamp })
-      commit('setResponses', data.responses)
-      commit('setTodayCount', data.responses.filter(r => {
-        const responseDate = new Date(r.timestamp)
-        const today = new Date()
-        return responseDate.getDate() === today.getDate() &&
-               responseDate.getMonth() === today.getMonth() &&
-               responseDate.getFullYear() === today.getFullYear()
-      }).length)
     },
 
     async deleteResponse({ commit }, id) {
@@ -117,26 +114,26 @@ export default createStore({
 
     updateCounts({ commit, state }) {
       const today = new Date()
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-      
       const todayResponses = state.responses.filter(r => {
         const responseDate = new Date(r.timestamp)
-        return responseDate >= todayStart && responseDate <= todayEnd
+        return responseDate.getDate() === today.getDate() &&
+               responseDate.getMonth() === today.getMonth() &&
+               responseDate.getFullYear() === today.getFullYear()
       })
       
       commit('setTodayCount', todayResponses.length)
+      
+      if (todayResponses.length > 0 && state.currentStreak === 0) {
+        commit('updateCurrentStreak')
+      }
     },
 
     async loadData({ commit }) {
       const data = await window.electronAPI.loadData()
-      // Сначала сбрасываем все
-      commit('resetStreak')
       commit('setResponses', data.responses)
       if (data.jobBoards && data.jobBoards.length > 0) {
         commit('setJobBoards', data.jobBoards)
       }
-      // Обновляем только todayCount, без обновления стрика
       await this.dispatch('updateCounts')
     },
 
@@ -154,13 +151,9 @@ export default createStore({
       state.todayCount++
     },
     updateCurrentStreak(state) {
-      // Увеличиваем текущий стрик
-      if (state.currentStreak === 0) {
+      if (state.currentStreak === 5) {
         state.currentStreak = 1
-      } else if (state.currentStreak === 5) {
-        // Если достигли 5, начинаем новый цикл
-        state.currentStreak = 1
-        // Переключаем между базовым и продвинутым режимом
+        state.totalStreaks++
         state.isBasicStreak = !state.isBasicStreak
       } else {
         state.currentStreak++

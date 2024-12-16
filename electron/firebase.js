@@ -1,5 +1,6 @@
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, push, get, remove} = require('firebase/database');
+const CharacterManager = require('./character');
 
 const firebaseConfig = {
     apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -11,10 +12,17 @@ const firebaseConfig = {
     appId: process.env.VITE_FIREBASE_APP_ID
 };
 
+
 class FirebaseManager {
     constructor() {
         const app = initializeApp(firebaseConfig);
         this.db = getDatabase(app);
+        this.characterManager = new CharacterManager(this.db);
+        this.initializeCharacter();
+    }
+
+    async initializeCharacter() {
+        await this.characterManager.initializeCharacter();
     }
 
     async addJobBoard(name) {
@@ -49,15 +57,41 @@ class FirebaseManager {
 
     async addResponse(jobBoard) {
         try {
+            const statusCheck = await this.characterManager.checkAndUpdateStatus();
+            if (statusCheck.died) {
+                if (global.mainWindow && global.mainWindow.webContents) {
+                    global.mainWindow.webContents.send('character-died');
+                }
+            }
+
             const responsesRef = ref(this.db, 'responses');
+            const currentTime = this.getCurrentTime();
+            
             await push(responsesRef, {
                 jobBoard,
-                timestamp: new Date().toString()
+                timestamp: currentTime
             });
-            return true;
+
+            const responses = await this.getAllResponses();
+
+            const streak = responses.filter(r => {
+                const responseDate = new Date(r.timestamp);
+                const today = new Date();
+                return responseDate.getDate() === today.getDate() &&
+                       responseDate.getMonth() === today.getMonth() &&
+                       responseDate.getFullYear() === today.getFullYear();
+            }).length;
+
+            const xpResult = await this.characterManager.addExperience(streak);
+
+            if (global.mainWindow && global.mainWindow.webContents) {
+                global.mainWindow.webContents.send('xp-gained', xpResult);
+            }
+
+            return responses;
         } catch (error) {
             console.error('Error adding response:', error);
-            return false;
+            return [];
         }
     }
 

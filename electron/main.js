@@ -5,6 +5,7 @@ const fs = require('fs')
 const { spawn } = require('child_process')
 const os = require('os')
 const notificationTemplates = require('./notificationTemplates')
+const FirebaseManager = require('./firebase')
 
 const homeDir = os.homedir()
 const logFile = path.join(homeDir, 'application-tracker-debug.log')
@@ -43,17 +44,23 @@ logToFile(`User home directory: ${homeDir}`)
 
 let mainWindow
 let db
-let httpServer
-
 let notificationsEnabled = true;
+
+async function initializeFirebase() {
+  try {
+    db = new FirebaseManager()
+    logToFile('Firebase initialized successfully')
+  } catch (error) {
+    logToFile(`Failed to initialize Firebase: ${error.stack}`)
+    throw error
+  }
+}
 
 async function createWindow() {
   try {
     logToFile('Starting createWindow function')
     
-    logToFile('Initializing FirebaseManager')
-    db = new FirebaseManager()
-    logToFile('FirebaseManager initialized')
+    await initializeFirebase()
     
     logToFile('Creating BrowserWindow')
     mainWindow = new BrowserWindow({
@@ -137,6 +144,7 @@ async function createWindow() {
 app.on('ready', async () => {
   logToFile('App ready event fired')
   try {
+    await initializeFirebase()
     await createWindow()
     logToFile('Window created successfully')
     
@@ -149,7 +157,6 @@ app.on('ready', async () => {
             title: notificationTemplates.getRandomTitle(),
             body: notificationTemplates.getRandomMessage(),
             icon: path.join(__dirname, '../public/', process.platform === 'darwin' ? 'apptr.icns' : 'apptr.ico'),
-            silent: false
           })
           notification.show()
         }
@@ -186,7 +193,6 @@ app.on('quit', () => {
   logToFile('Hotkeys unregistered')
 })
 
-const FirebaseManager = require('./firebase')
 const http = require('http')
 
 async function startTemplateServer() {
@@ -250,75 +256,151 @@ async function startTemplateServer() {
   httpServer = server;
 }
 
-ipcMain.handle('update-counter', (event) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-counter')
-  }
-})
-
-ipcMain.handle('save-data', async (event, data) => {
-  const { jobBoard, timestamp } = data
-  const success = await db.addResponse(jobBoard, timestamp)
-  if (success) {
-    const data = await db.loadData()
-    mainWindow.webContents.send('update-counter')
-    return data
-  }
-  return null
-})
-
 ipcMain.handle('load-data', async () => {
   try {
-    const data = await db.loadData()
-    return data
+    return await db.loadData();
   } catch (error) {
-    logToFile('Error loading data:', error)
-    return null
+    console.error('Error loading data:', error);
+    return { responses: [], jobBoards: [] };
   }
-})
+});
+
+ipcMain.handle('save-data', async (event, data) => {
+  try {
+    await db.saveData(data);
+    return true;
+  } catch (error) {
+    console.error('Error saving data:', error);
+    return false;
+  }
+});
 
 ipcMain.handle('clear-today-data', async () => {
-  await db.clearTodayData()
-  return {
-    responses: await db.getAllResponses(),
-    jobBoards: await db.getAllJobBoards()
+  try {
+    await db.clearTodayData();
+    return true;
+  } catch (error) {
+    console.error('Error clearing today data:', error);
+    return false;
   }
-})
+});
+
+ipcMain.handle('add-response', async (event, response) => {
+  try {
+    await db.addResponse(response);
+    return true;
+  } catch (error) {
+    console.error('Error adding response:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-responses', async () => {
+  try {
+    return await db.getAllResponses();
+  } catch (error) {
+    console.error('Error getting responses:', error);
+    return [];
+  }
+});
 
 ipcMain.handle('delete-response', async (event, id) => {
   try {
-    await db.removeResponse(id)
-    const data = await db.loadData()
-    return data
+    await db.removeResponse(id);
+    return true;
   } catch (error) {
-    logToFile('Error deleting response:', error)
-    throw error
+    console.error('Error deleting response:', error);
+    return false;
   }
-})
+});
 
-ipcMain.handle('clear-store', async () => {
+ipcMain.handle('add-job-board', async (event, name) => {
   try {
-    await db.clearAllData()
-    return { success: true }
+    await db.addJobBoard(name);
+    return true;
   } catch (error) {
-    logToFile('Error clearing store:', error)
-    throw error
+    console.error('Error adding job board:', error);
+    return false;
   }
-})
+});
+
+ipcMain.handle('get-job-boards', async () => {
+  try {
+    return await db.getAllJobBoards();
+  } catch (error) {
+    console.error('Error getting job boards:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('delete-job-board', async (event, id) => {
+  try {
+    await db.deleteJobBoard(id);
+    return true;
+  } catch (error) {
+    console.error('Error deleting job board:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('update-counter', (event) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-counter');
+  }
+});
 
 ipcMain.handle('open-cover-letter-template', async () => {
   try {
-    shell.openExternal('http://localhost:8080')
-    return true
+    const templatePath = path.join(__dirname, '../templates/cover-letter-template.txt');
+    await shell.openPath(templatePath);
+    return true;
   } catch (error) {
-    logToFile('Error opening cover letter template:', error)
-    return false
+    console.error('Error opening template:', error);
+    return false;
   }
-})
+});
 
-ipcMain.handle('open-in-browser', async (event, url) => {
-  await shell.openExternal(url)
-})
+ipcMain.handle('getCharacter', async () => {
+  try {
+    return await db.characterManager.getCharacter();
+  } catch (error) {
+    console.error('Error getting character:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('saveCharacter', async (event, character) => {
+  try {
+    await db.characterManager.saveCharacter(character);
+    return true;
+  } catch (error) {
+    console.error('Error saving character:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('checkCharacterStatus', async () => {
+  try {
+    const status = await db.characterManager.checkAndUpdateStatus();
+    return status;
+  } catch (error) {
+    console.error('Error checking character status:', error);
+    return { died: false };
+  }
+});
+
+ipcMain.handle('gainExperience', async () => {
+  try {
+    const result = await db.characterManager.addExperience();
+    if (result) {
+      mainWindow.webContents.send('xp-gained', result);
+    }
+    return result;
+  } catch (error) {
+    console.error('Error gaining experience:', error);
+    return null;
+  }
+});
 
 ipcMain.on('toggle-notifications', (event, enabled) => {
   notificationsEnabled = enabled;

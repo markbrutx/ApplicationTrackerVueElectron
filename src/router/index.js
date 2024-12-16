@@ -3,6 +3,7 @@ import RecentResponses from '../views/RecentResponses.vue'
 import Summary from '../views/Summary.vue'
 import DataManagement from '../views/DataManagement.vue'
 import JobBoardsStats from '../views/JobBoardsStats.vue'
+import Character from '../views/Character.vue'
 
 const routes = [
   {
@@ -28,6 +29,11 @@ const routes = [
     path: '/job-boards',
     name: 'Job Boards Stats',
     component: JobBoardsStats
+  },
+  {
+    path: '/character',
+    name: 'Character',
+    component: Character
   }
 ]
 
